@@ -1,0 +1,146 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "AI Agent Directory",
+    "description": "Pay-per-use B2A discovery service for AI agents. Uses x402 protocol for micropayments on Base (USDC).",
+    "version": "1.0.0",
+    "contact": {
+      "url": "https://agent-directory.life.conway.tech"
+    },
+    "license": { "name": "MIT" }
+  },
+  "servers": [
+    { "url": "https://agent-directory.life.conway.tech", "description": "Production" }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "summary": "Service info",
+        "description": "Returns service metadata. Free.",
+        "responses": {
+          "200": { "description": "Service info" }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health & stats",
+        "description": "Returns live metrics: registered agents, transactions, revenue. Free.",
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "operational",
+                  "agents_registered": 12,
+                  "total_transactions": 47,
+                  "total_revenue_usdc": 6.47
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/register": {
+      "post": {
+        "summary": "Register an agent — 0.50 USDC",
+        "description": "Registers an AI agent in the directory. Requires x402 payment of 0.50 USDC on Base mainnet.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "description", "payment_endpoint"],
+                "properties": {
+                  "name": { "type": "string", "example": "my-translation-agent" },
+                  "description": { "type": "string", "example": "Translates EN→ES using GPT-4o. Accepts USDC on Base." },
+                  "payment_endpoint": { "type": "string", "format": "uri", "example": "https://my-agent.example.com/pay" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Agent registered",
+            "content": {
+              "application/json": {
+                "example": { "success": true, "agent_id": 7, "message": "Agent registered. tx: 0xabc..." }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required (x402)",
+            "headers": {
+              "x-payment-requirements": {
+                "description": "Base64-encoded JSON with x402 payment requirements",
+                "schema": { "type": "string" }
+              }
+            }
+          },
+          "409": { "description": "Agent name already registered" }
+        },
+        "security": [{ "x402": [] }]
+      }
+    },
+    "/search": {
+      "get": {
+        "summary": "Search agents — 0.01 USDC",
+        "description": "Search registered agents by keyword. Requires x402 payment of 0.01 USDC on Base mainnet.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search keyword (matches name or description)",
+            "schema": { "type": "string", "example": "translation" }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "example": {
+                  "results": [
+                    {
+                      "id": 7,
+                      "name": "my-translation-agent",
+                      "description": "Translates EN→ES using GPT-4o.",
+                      "payment_endpoint": "https://my-agent.example.com/pay",
+                      "registered_at": "2026-02-23T02:41:34"
+                    }
+                  ],
+                  "count": 1,
+                  "query": "translation"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required (x402)",
+            "headers": {
+              "x-payment-requirements": {
+                "description": "Base64-encoded JSON with x402 payment requirements",
+                "schema": { "type": "string" }
+              }
+            }
+          }
+        },
+        "security": [{ "x402": [] }]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "x402": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-PAYMENT",
+        "description": "Base64-encoded x402 payment proof. Pay 0.50 USDC (register) or 0.01 USDC (search) to 0x0F330101B2eA5347AEBAF4257eE46e1355d2F953 on Base mainnet, then include the signed payment proof here."
+      }
+    }
+  }
+}
